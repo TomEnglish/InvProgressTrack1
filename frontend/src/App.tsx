@@ -7,6 +7,7 @@ import EarnedValue from './pages/EarnedValue';
 import Audits from './pages/Audits';
 import Periods from './pages/Periods';
 import Upload from './pages/Upload';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
             <Route path="audits" element={<Audits />} />
             <Route path="periods" element={<Periods />} />
             <Route path="upload" element={<Upload />} />
+            <Route path="admin" element={<Admin />} />
           </Route>
         </Route>
       </Routes>

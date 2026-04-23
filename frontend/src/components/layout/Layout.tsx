@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
+import { Moon, Sun } from 'lucide-react';
 
 export default function Layout() {
   const tabs = [
@@ -7,7 +9,17 @@ export default function Layout() {
     { name: 'Progress Audits', path: '/audits' },
     { name: 'Period Tracking', path: '/periods' },
     { name: 'Data Upload', path: '/upload' },
+    { name: 'Admin Hub', path: '/admin' },
   ];
+
+  const [theme, setTheme] = useState(localStorage.getItem('invenio-theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('invenio-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   return (
     <div className="min-h-screen flex flex-col bg-canvas text-text">
@@ -25,13 +37,22 @@ export default function Layout() {
             <path d="M21 17h22v7h-7.5v16H43v7H21v-7h7.5V24H21z" fill="#FFFFFF"/>
           </svg>
           <div>
-            <h1 className="text-lg font-semibold leading-tight">Progress Tracker Dashboard</h1>
-            <div className="text-xs opacity-80">Project Controls | Kindred Industrial Services</div>
+            <h1 className="text-lg font-semibold leading-tight text-white shadow-sm">Progress Tracker Dashboard</h1>
+            <div className="text-xs text-white/80">Project Controls | Kindred Industrial Services</div>
           </div>
         </div>
-        <div className="text-right text-xs">
-          <div className="font-semibold">LNG Project</div>
-          <div>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+        <div className="flex items-center gap-6 text-right text-xs text-white">
+          <div className="hidden sm:block">
+            <div className="font-semibold text-white shadow-sm">LNG Project</div>
+            <div className="text-white/80">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+          </div>
+          <button 
+            onClick={toggleTheme} 
+            className="p-2 bg-black/10 hover:bg-black/20 rounded-full transition-colors backdrop-blur-sm border border-white/10"
+            title="Toggle Dark Mode"
+          >
+            {theme === 'dark' ? <Sun size={18} className="text-white" /> : <Moon size={18} className="text-white" />}
+          </button>
         </div>
       </header>
 
