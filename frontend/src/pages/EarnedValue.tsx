@@ -52,7 +52,7 @@ export default function EarnedValue() {
       <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="bg-[#F8FAFC] dark:bg-[#1E293B] text-text border-b border-border">
+            <thead className="bg-[#F8FAFC] dark:bg-raised text-text border-b border-border">
               <tr>
                 <th className="px-6 py-4 font-semibold tracking-wide">Period</th>
                 <th className="px-6 py-4 font-semibold tracking-wide">Date</th>
@@ -78,7 +78,7 @@ export default function EarnedValue() {
                   const cv = snap.total_earned - snap.total_actual;
                   
                   return (
-                    <tr key={snap.id} className="hover:bg-[#F1F5F9] dark:hover:bg-[#334155] transition-colors">
+                    <tr key={snap.id} className="hover:bg-[#F1F5F9] dark:hover:bg-raised transition-colors">
                       <td className="px-6 py-4 font-medium text-text">{snap.label}</td>
                       <td className="px-6 py-4 text-text-muted">{new Date(snap.snapshot_date).toLocaleDateString()}</td>
                       <td className="px-6 py-4 text-right tabular-nums text-text">{snap.total_budget.toLocaleString()} hrs</td>

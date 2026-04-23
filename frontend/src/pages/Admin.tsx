@@ -100,7 +100,7 @@ export default function Admin() {
       <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="bg-[#F8FAFC] dark:bg-[#1E293B] text-text border-b border-border">
+            <thead className="bg-[#F8FAFC] dark:bg-raised text-text border-b border-border">
               <tr>
                 <th className="px-6 py-4 font-semibold tracking-wide">Email Account</th>
                 <th className="px-6 py-4 font-semibold tracking-wide">System Role</th>
@@ -113,12 +113,12 @@ export default function Admin() {
                 <tr><td colSpan={4} className="px-6 py-8 text-center text-text-muted font-medium">Scanning Database Array...</td></tr>
               )}
               {users?.map(u => (
-                <tr key={u.id} className="hover:bg-[#F1F5F9] dark:hover:bg-[#334155] transition-colors">
+                <tr key={u.id} className="hover:bg-[#F1F5F9] dark:hover:bg-raised transition-colors">
                   <td className="px-6 py-4 font-medium text-text">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-md tracking-wider ${
                       u.role === 'admin' 
-                        ? 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-900/50' 
+                        ? 'bg-violet-50 dark:bg-info-soft text-violet-700 dark:text-info border border-violet-200 dark:border-info/30' 
                         : 'bg-canvas text-text-muted border border-border'
                     }`}>
                       {u.role === 'admin' ? <Shield size={12} className="mr-1.5" /> : null}
