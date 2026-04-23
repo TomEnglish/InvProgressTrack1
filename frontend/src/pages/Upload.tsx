@@ -72,9 +72,21 @@ export default function Upload() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-text">Data Upload</h2>
-        <p className="text-sm text-text-muted mt-1">Select your project and upload the latest Earned Value tracking CSV.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-text">Data Upload</h2>
+          <p className="text-sm text-text-muted mt-1">Select your project and upload the latest Earned Value tracking CSV.</p>
+        </div>
+        <div className="flex gap-3">
+          <a href="/progress-template.csv" download className="px-3 py-1.5 text-xs font-semibold border border-primary text-primary hover:bg-primary-soft outline-none rounded transition-colors bg-surface inline-flex items-center">
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Blank Template
+          </a>
+          <a href="/mock-upload-data.csv" download className="px-3 py-1.5 text-xs font-semibold border border-border text-text hover:bg-raised outline-none rounded transition-colors bg-surface inline-flex items-center">
+             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+             Mock Data
+          </a>
+        </div>
       </div>
 
       <div className="bg-surface border border-border p-6 rounded-md shadow-sm space-y-6">
