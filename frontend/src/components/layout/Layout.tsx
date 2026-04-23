@@ -14,9 +14,16 @@ export default function Layout() {
       {/* Header */}
       <header className="bg-gradient-to-br from-primary-hover to-primary text-white py-3 px-6 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white/20 rounded-md flex items-center justify-center font-bold text-xs">
-            KIS
-          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Invenio" className="w-8 h-8 flex-shrink-0 shadow-sm rounded-xl">
+            <defs>
+              <linearGradient id="invenioMark" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stopColor="#0369A1"/>
+                <stop offset="1" stopColor="#0891B2"/>
+              </linearGradient>
+            </defs>
+            <rect width="64" height="64" rx="14" fill="url(#invenioMark)"/>
+            <path d="M21 17h22v7h-7.5v16H43v7H21v-7h7.5V24H21z" fill="#FFFFFF"/>
+          </svg>
           <div>
             <h1 className="text-lg font-semibold leading-tight">Progress Tracker Dashboard</h1>
             <div className="text-xs opacity-80">Project Controls | Kindred Industrial Services</div>

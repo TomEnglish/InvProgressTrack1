@@ -1,10 +1,30 @@
 -- Mock Seed Data for ProgressTracker Environment
 
--- Create mock tenant auth reference 
-INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-000000000001', 'admin@invenio.kis');
+-- Create mock tenant auth reference mathematically capable of native UI Login
+INSERT INTO auth.users (id, email, encrypted_password, aud, role, email_confirmed_at) 
+VALUES (
+  '00000000-0000-0000-0000-000000000001', 
+  'admin@invenio.kis', 
+  extensions.crypt('password123', extensions.gen_salt('bf')), 
+  'authenticated', 
+  'authenticated', 
+  now()
+);
 
--- Bind the mock auth user to a hardcoded tenant for RLS tests
-INSERT INTO app_users (id, tenant_id, role) VALUES ('00000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'admin');
+-- The app_users table is now automatically seeded via the handle_new_user() trigger during the step above!
+
+-- Force GoTrue to recognize the user via the Identities table
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at) 
+VALUES (
+    gen_random_uuid(),
+    '00000000-0000-0000-0000-000000000001',
+    format('{"sub":"%s","email":"%s"}', '00000000-0000-0000-0000-000000000001', 'admin@invenio.kis')::jsonb,
+    'email',
+    'admin@invenio.kis',
+    current_timestamp,
+    current_timestamp,
+    current_timestamp
+);
 
 -- Create mock project matching the React UI UUID bound to that Tenant
 INSERT INTO projects (id, name, tenant_id, planned_start, planned_end) 
@@ -24,9 +44,13 @@ INSERT INTO period_snapshots (project_id, snapshot_date, label, total_budget, to
 ('550e8400-e29b-41d4-a716-446655440000', '2026-03-15', 'Week 03', 10000,  3500,  3400, 1.03, 0.35),
 ('550e8400-e29b-41d4-a716-446655440000', '2026-03-22', 'Week 04', 10000,  5500,  5200, 1.05, 0.55);
 
--- Insert dummy progress items to seed the live 'Current' data pool
+-- Insert comprehensive dummy progress items to seed the live 'Current' data pool out to all disciplines!
 INSERT INTO progress_items (project_id, discipline_id, dwg, budget_hrs, actual_hrs, percent_complete) VALUES 
-('550e8400-e29b-41d4-a716-446655440000', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'CIV-001', 2000, 1800, 100),
-('550e8400-e29b-41d4-a716-446655440000', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'PIP-001', 4000, 2000, 45),
-('550e8400-e29b-41d4-a716-446655440000', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'STR-001', 2500, 1000, 30),
-('550e8400-e29b-41d4-a716-446655440000', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ELE-001', 1500,  400, 25);
+('550e8400-e29b-41d4-a716-446655440000', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'CIV-001-FND', 1200, 1100, 100),
+('550e8400-e29b-41d4-a716-446655440000', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'CIV-002-SIT',  800,  700, 100),
+('550e8400-e29b-41d4-a716-446655440000', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'PIP-101-FWD', 2000, 1100,  60),
+('550e8400-e29b-41d4-a716-446655440000', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'PIP-102-REV', 2000,  900,  30),
+('550e8400-e29b-41d4-a716-446655440000', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'STR-301-BLD', 1500,  850,  45),
+('550e8400-e29b-41d4-a716-446655440000', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'STR-302-SUP', 1000,  150,  15),
+('550e8400-e29b-41d4-a716-446655440000', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ELE-500-UGD', 1000,  300,  20),
+('550e8400-e29b-41d4-a716-446655440000', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'ELE-501-AGD',  500,  100,  35);

@@ -76,6 +76,20 @@ CREATE OR REPLACE FUNCTION get_auth_tenant_id() RETURNS uuid AS $$
   SELECT tenant_id FROM app_users WHERE id = auth.uid();
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
+-- Trigger to safely capture manual Dashboard signups and map them to the Dummy Tenant
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.app_users (id, tenant_id, role)
+  VALUES (new.id, '11111111-1111-1111-1111-111111111111', 'admin');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
 -- RLS Setup
 ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
