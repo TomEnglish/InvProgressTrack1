@@ -20,7 +20,7 @@ test.describe('Phase 1 — Admin Hub provisions a new user', () => {
     await modal.locator('input[type="password"]').fill(tempPassword);
     await modal.locator('select').selectOption('viewer');
 
-    await modal.locator('button:has-text("Deploy to Matrix")').click();
+    await modal.locator('button:has-text("Create User")').click();
 
     await expect(page.locator('td', { hasText: newUserEmail })).toBeVisible({ timeout: 10_000 });
   });

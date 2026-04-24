@@ -27,9 +27,9 @@ test.describe('Phase 2 — Password recovery', () => {
 
     await page.locator('input[type="password"]').first().fill(newPassword);
     await page.locator('input[type="password"]').nth(1).fill(newPassword);
-    await page.click('button:has-text("Bind Credentials")');
+    await page.click('button:has-text("Set New Password")');
 
-    await expect(page.locator('text=Credentials Bound')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('text=Password Updated')).toBeVisible({ timeout: 10_000 });
     await expect(page).not.toHaveURL(/.*reset-password/, { timeout: 10_000 });
   });
 });

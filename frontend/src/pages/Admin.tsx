@@ -193,7 +193,7 @@ export default function Admin() {
                 disabled={!iEmail || !iPass || createUserMut.isPending}
                 className="px-5 py-2.5 text-sm font-semibold bg-primary text-white rounded-md shadow-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
               >
-                {createUserMut.isPending ? 'Generating Target...' : 'Deploy to Matrix'}
+                {createUserMut.isPending ? 'Creating...' : 'Create User'}
               </button>
             </div>
           </div>

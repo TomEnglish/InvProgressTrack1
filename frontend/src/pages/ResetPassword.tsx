@@ -57,8 +57,8 @@ export default function ResetPassword() {
             <rect width="64" height="64" rx="14" fill="currentColor"/>
             <path d="M21 17h22v7h-7.5v16H43v7H21v-7h7.5V24H21z" fill={document.documentElement.getAttribute('data-theme') === 'dark' ? '#0B1220' : '#FFFFFF'}/>
           </svg>
-          <h2 className="text-2xl font-bold text-text">Initialize Security Key</h2>
-          <p className="text-text-muted text-sm mt-1">Bind a new cryptographic password to your account.</p>
+          <h2 className="text-2xl font-bold text-text">Reset Your Password</h2>
+          <p className="text-text-muted text-sm mt-1">Enter a new password for your account.</p>
         </div>
 
         {linkStatus === 'verifying' && (
@@ -89,8 +89,8 @@ export default function ResetPassword() {
             {success ? (
               <div className="mb-6 p-6 bg-canvas border border-border rounded-lg text-center flex flex-col items-center">
                 <CheckCircle2 size={32} className="text-emerald-500 mb-2" />
-                <p className="text-lg font-bold text-text">Credentials Bound.</p>
-                <p className="text-xs text-text-muted mt-1">Automatic transition to Central Dashboard initiating...</p>
+                <p className="text-lg font-bold text-text">Password Updated.</p>
+                <p className="text-xs text-text-muted mt-1">Redirecting to your dashboard...</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,7 +136,7 @@ export default function ResetPassword() {
                   disabled={loading || !password || password.length < 6}
                   className="w-full py-2.5 px-4 mt-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
                 >
-                  {loading ? 'Overwriting Data...' : 'Bind Credentials'}
+                  {loading ? 'Saving...' : 'Set New Password'}
                 </button>
               </form>
             )}
