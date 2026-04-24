@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function Login() {
@@ -44,7 +44,12 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">Password</label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="block text-[13px] font-semibold text-text tracking-wide">Password</label>
+              <Link to="/forgot-password" className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors">
+                Initialize Recovery?
+              </Link>
+            </div>
             <input 
               type="password" 
               value={password}

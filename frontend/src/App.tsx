@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import AuthGuard from './components/layout/AuthGuard';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Overview from './pages/Overview';
 import EarnedValue from './pages/EarnedValue';
 import Audits from './pages/Audits';
@@ -14,6 +16,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         <Route element={<AuthGuard />}>
           <Route path="/" element={<Layout />}>
