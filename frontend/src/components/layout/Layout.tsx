@@ -25,7 +25,7 @@ export default function Layout() {
 
   const handleUpdatePassword = async () => {
     if (newPass !== newPassConfirm) {
-      setPassMsg('Keys do not physically match.');
+      setPassMsg("Passwords don't match.");
       return;
     }
     setPassLoading(true);
@@ -81,7 +81,7 @@ export default function Layout() {
           <button 
             onClick={() => setShowKeyModal(true)} 
             className="p-2 bg-black/10 dark:bg-canvas/50 hover:bg-black/20 dark:hover:bg-canvas rounded-full transition-colors backdrop-blur-sm border border-white/10 dark:border-border"
-            title="Update Security Profile"
+            title="Change password"
           >
             <KeyRound size={18} className="text-white dark:text-text-muted" />
           </button>
@@ -110,22 +110,22 @@ export default function Layout() {
       {showKeyModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in text-left">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-xl font-bold text-text">Initialize Security Architecture</h3>
-            <p className="text-sm text-text-muted">Overwrite your Admin-provided password with a private cryptographic key.</p>
+            <h3 className="text-xl font-bold text-text">Change Your Password</h3>
+            <p className="text-sm text-text-muted">Set a new password for your account.</p>
             
             {passMsg && (
               <div className={`p-3 text-sm font-semibold rounded ${passMsg === 'SUCCESS' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200' : 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200'}`}>
-                {passMsg === 'SUCCESS' ? 'Credential Overwrite Complete.' : passMsg}
+                {passMsg === 'SUCCESS' ? 'Password updated.' : passMsg}
               </div>
             )}
             
             <div className="space-y-4 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-text mb-1.5">New Key</label>
+                <label className="block text-xs font-semibold text-text mb-1.5">New Password</label>
                 <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full p-2.5 bg-canvas border border-border rounded-md text-sm outline-none focus:border-primary text-text" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-text mb-1.5">Verify Key</label>
+                <label className="block text-xs font-semibold text-text mb-1.5">Confirm New Password</label>
                 <input type="password" value={newPassConfirm} onChange={e => setNewPassConfirm(e.target.value)} className="w-full p-2.5 bg-canvas border border-border rounded-md text-sm outline-none focus:border-primary text-text" />
               </div>
             </div>
@@ -139,7 +139,7 @@ export default function Layout() {
                 disabled={!newPass || passLoading}
                 className="px-5 py-2.5 text-sm font-semibold bg-primary text-white rounded-md shadow-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
               >
-                {passLoading ? 'Writing...' : 'Update Matrix'}
+                {passLoading ? 'Saving...' : 'Change Password'}
               </button>
             </div>
           </div>

@@ -47,7 +47,7 @@ export default function Login() {
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-[13px] font-semibold text-text tracking-wide">Password</label>
               <Link to="/forgot-password" className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors">
-                Initialize Recovery?
+                Forgot password?
               </Link>
             </div>
             <input 
@@ -63,7 +63,7 @@ export default function Login() {
             disabled={loading}
             className="w-full py-2.5 mt-2 bg-primary text-white text-sm font-semibold rounded-md hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
       </div>

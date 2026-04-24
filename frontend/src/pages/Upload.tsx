@@ -11,7 +11,7 @@ export default function Upload() {
   const mutation = useMutation({
     mutationFn: (items: any[]) => uploadProgressData(projectId, items),
     onSuccess: () => {
-      alert("Successfully processed and imported project data.");
+      alert("CSV imported successfully.");
       setFile(null);
     },
     onError: (error: Error) => {
@@ -91,19 +91,19 @@ export default function Upload() {
 
       <div className="bg-surface border border-border p-6 rounded-md shadow-sm space-y-6">
         <div>
-          <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">Target Project UUID</label>
+          <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">Project ID</label>
           <input 
             type="text" 
-            placeholder="copy-paste UUID here..."
+            placeholder="Paste your project's UUID here..."
             value={projectId}
             onChange={e => setProjectId(e.target.value)}
             className="w-full max-w-sm p-2.5 text-sm bg-canvas border border-border rounded-md focus:border-primary outline-none focus:ring-1 focus:ring-primary-soft"
           />
-          <p className="text-xs text-text-muted mt-1">Currently hardcoded to strict UUID while we attach standard project lookup dropdowns.</p>
+          <p className="text-xs text-text-muted mt-1">A project dropdown is coming soon; for now, paste the UUID.</p>
         </div>
 
         <div>
-           <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">CSV Data Payload</label>
+           <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">CSV File</label>
            
            <div 
             className={`border-2 border-dashed rounded-md p-10 text-center transition-colors cursor-pointer ${dragActive ? 'border-primary bg-primary-soft' : 'border-border bg-canvas hover:bg-raised'}`}
@@ -118,8 +118,8 @@ export default function Upload() {
                <p className="text-sm font-semibold text-primary">{file.name}</p>
              ) : (
                <div>
-                  <p className="text-sm text-text-muted font-medium mb-1">Drag and drop your spreadsheet here</p>
-                  <p className="text-xs text-text-subtle">Supports strictly formatted CSV pipelines matching Edge function constraints</p>
+                  <p className="text-sm text-text-muted font-medium mb-1">Drag and drop your CSV here, or click to select</p>
+                  <p className="text-xs text-text-subtle">Headers must match the Blank Template</p>
                </div>
              )}
            </div>
@@ -131,7 +131,7 @@ export default function Upload() {
             onClick={processFile}
             className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-md hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
-            {mutation.isPending ? 'Validating Payload...' : 'Submit to Pipeline'}
+            {mutation.isPending ? 'Uploading...' : 'Upload CSV'}
           </button>
         </div>
       </div>

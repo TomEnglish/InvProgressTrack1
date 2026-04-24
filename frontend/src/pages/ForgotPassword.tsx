@@ -38,7 +38,7 @@ export default function ForgotPassword() {
             <path d="M21 17h22v7h-7.5v16H43v7H21v-7h7.5V24H21z" fill={document.documentElement.getAttribute('data-theme') === 'dark' ? '#0B1220' : '#FFFFFF'}/>
           </svg>
           <h2 className="text-2xl font-bold text-text">Password Recovery</h2>
-          <p className="text-text-muted text-sm mt-1">Enter your registered email below to receive a secure login key.</p>
+          <p className="text-text-muted text-sm mt-1">Enter your email to receive a password reset link.</p>
         </div>
 
         {error && (
@@ -49,8 +49,8 @@ export default function ForgotPassword() {
 
         {success ? (
           <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-lg text-center shadow-sm">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Recovery initiated!</p>
-            <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-1">If that email exists in the matrix, an instructional link has been sent.</p>
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Email sent.</p>
+            <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-1">If an account exists for that address, we've sent a password reset link.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,14 +79,14 @@ export default function ForgotPassword() {
               disabled={loading || !email}
               className="w-full py-2.5 px-4 mt-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
             >
-              {loading ? 'Transmitting...' : 'Send Magic Link'}
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
           </form>
         )}
 
         <div className="mt-6 text-center">
           <Link to="/login" className="inline-flex items-center text-sm font-semibold text-text-subtle hover:text-primary transition-colors">
-            <ArrowLeft size={16} className="mr-1.5" /> Return to Terminal
+            <ArrowLeft size={16} className="mr-1.5" /> Back to sign in
           </Link>
         </div>
       </div>

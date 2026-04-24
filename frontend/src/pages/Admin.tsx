@@ -70,7 +70,7 @@ export default function Admin() {
   if (error) {
     return (
       <div className="p-6 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl max-w-2xl text-red-700 dark:text-red-400 font-semibold shadow-sm animate-fade-in">
-        Access Denied. You must have active Administrator privileges to view this page.
+        Access denied. You must be an administrator to view this page.
       </div>
     );
   }
@@ -93,7 +93,7 @@ export default function Admin() {
 
       {errorMsg && (
         <div className="p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm rounded-md font-semibold border border-red-200 dark:border-red-900/50">
-          Action Failed: {errorMsg}
+          Error: {errorMsg}
         </div>
       )}
 
@@ -102,15 +102,15 @@ export default function Admin() {
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-[#F8FAFC] dark:bg-raised text-text border-b border-border">
               <tr>
-                <th className="px-6 py-4 font-semibold tracking-wide">Email Account</th>
-                <th className="px-6 py-4 font-semibold tracking-wide">System Role</th>
-                <th className="px-6 py-4 font-semibold tracking-wide">Date Registered</th>
+                <th className="px-6 py-4 font-semibold tracking-wide">Email</th>
+                <th className="px-6 py-4 font-semibold tracking-wide">Role</th>
+                <th className="px-6 py-4 font-semibold tracking-wide">Created</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading && (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-text-muted font-medium">Scanning Database Array...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-text-muted font-medium">Loading users...</td></tr>
               )}
               {users?.map(u => (
                 <tr key={u.id} className="hover:bg-[#F1F5F9] dark:hover:bg-raised transition-colors">
@@ -137,7 +137,7 @@ export default function Admin() {
                     <button 
                       title="Permanently Delete Account"
                       onClick={() => {
-                        if (confirm(`Absolutely sure you want to permanently delete ${u.email} from the architecture?`)) {
+                        if (confirm(`Are you sure you want to permanently delete ${u.email}?`)) {
                           deleteUserMut.mutate(u.id);
                         }
                       }}
@@ -158,7 +158,7 @@ export default function Admin() {
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md p-6 space-y-5">
             <div>
                <h3 className="text-xl font-bold text-text">Create User Account</h3>
-               <p className="text-sm text-text-muted mt-1">Bypassing the API layer safely injects users natively into the tenant matrix.</p>
+               <p className="text-sm text-text-muted mt-1">Add a new user to your tenant.</p>
             </div>
             
             {iError && <div className="p-3 text-sm bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold rounded border border-red-200 dark:border-red-900/50">{iError}</div>}
@@ -173,10 +173,10 @@ export default function Admin() {
                 <input type="password" value={iPass} onChange={e => setIPass(e.target.value)} className="w-full p-2.5 bg-canvas border border-border rounded-md text-sm outline-none focus:border-primary transition-colors text-text" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-text mb-1.5 tracking-wide">Privilege Role</label>
+                <label className="block text-xs font-semibold text-text mb-1.5 tracking-wide">Role</label>
                 <select value={iRole} onChange={e => setIRole(e.target.value)} className="w-full p-2.5 bg-canvas border border-border rounded-md text-sm outline-none focus:border-primary transition-colors text-text">
-                  <option value="viewer">Viewer (Read Only)</option>
-                  <option value="admin">Administrator (Full Access)</option>
+                  <option value="viewer">Viewer (read only)</option>
+                  <option value="admin">Administrator (full access)</option>
                 </select>
               </div>
             </div>
@@ -186,7 +186,7 @@ export default function Admin() {
                 onClick={() => setShowInvite(false)}
                 className="px-5 py-2.5 text-sm font-semibold bg-canvas border border-border text-text rounded-md hover:bg-raised transition-colors"
               >
-                Disengage
+                Cancel
               </button>
               <button 
                 onClick={() => createUserMut.mutate()}

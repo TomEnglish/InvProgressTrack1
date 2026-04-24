@@ -7,8 +7,8 @@ test.describe('Phase 2 — Password recovery', () => {
 
     await page.goto('/forgot-password');
     await page.fill('input[type="email"]', email);
-    await page.click('button:has-text("Send Magic Link")');
-    await expect(page.locator('text=Recovery initiated')).toBeVisible({ timeout: 10_000 });
+    await page.click('button:has-text("Send Reset Link")');
+    await expect(page.locator('text=Email sent')).toBeVisible({ timeout: 10_000 });
   });
 
   test('token_hash recovery link completes reset and logs user into dashboard', async ({ page, baseURL }) => {

@@ -32,7 +32,7 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) {
-      setError("Cryptographic keys do not perfectly match.");
+      setError("Passwords don't match.");
       return;
     }
     setLoading(true);
