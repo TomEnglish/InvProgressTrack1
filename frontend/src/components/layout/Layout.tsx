@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { Moon, Sun, KeyRound } from 'lucide-react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Moon, Sun, KeyRound, LogOut } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function Layout() {
+  const navigate = useNavigate();
   const tabs = [
     { name: 'Executive Overview', path: '/' },
     { name: 'Earned Value', path: '/ev' },
@@ -90,6 +91,17 @@ export default function Layout() {
             title="Toggle Dark Mode"
           >
             {theme === 'dark' ? <Sun size={18} className="text-primary" /> : <Moon size={18} className="text-white" />}
+          </button>
+          <div className="w-[1px] h-6 bg-white/20 dark:bg-border mx-1"></div>
+          <button 
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate('/login');
+            }} 
+            className="p-2 hover:bg-danger-soft/20 dark:hover:bg-red-950/40 rounded-full transition-colors backdrop-blur-sm text-white dark:text-text-muted hover:text-red-300 dark:hover:text-red-400"
+            title="Sign Out"
+          >
+            <LogOut size={18} />
           </button>
         </div>
       </header>
