@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import KpiCard from '../components/ui/KpiCard';
 import DisciplineChart from '../components/ui/DisciplineChart';
 import SCurveChart from '../components/ui/SCurveChart';
 
 export default function Overview() {
-  const [projectId] = useState('550e8400-e29b-41d4-a716-446655440000'); // Track fixed project ID locally
+  const { projectId } = useParams<{ projectId: string }>();
+  if (!projectId) return null;
 
   // Fetch KPI Summaries
   const { data: projectMetrics, isLoading: isProjectLoading } = useQuery({

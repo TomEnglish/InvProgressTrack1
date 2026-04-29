@@ -1,10 +1,11 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import KpiCard from '../components/ui/KpiCard';
 
 export default function Periods() {
-  const [projectId] = useState('550e8400-e29b-41d4-a716-446655440000'); // Mock hook
+  const { projectId } = useParams<{ projectId: string }>();
+  if (!projectId) return null;
 
   const { data: snapshots, isLoading } = useQuery({
     queryKey: ['period_snapshots', projectId],

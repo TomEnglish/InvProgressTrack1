@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
 import { uploadProgressData } from '../lib/api';
 
 export default function Upload() {
-  const [projectId, setProjectId] = useState('');
+  const { projectId } = useParams<{ projectId: string }>();
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  if (!projectId) return null;
 
   const mutation = useMutation({
     mutationFn: (items: any[]) => uploadProgressData(projectId, items),
@@ -90,18 +92,6 @@ export default function Upload() {
       </div>
 
       <div className="bg-surface border border-border p-6 rounded-md shadow-sm space-y-6">
-        <div>
-          <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">Project ID</label>
-          <input 
-            type="text" 
-            placeholder="Paste your project's UUID here..."
-            value={projectId}
-            onChange={e => setProjectId(e.target.value)}
-            className="w-full max-w-sm p-2.5 text-sm bg-canvas border border-border rounded-md focus:border-primary outline-none focus:ring-1 focus:ring-primary-soft"
-          />
-          <p className="text-xs text-text-muted mt-1">A project dropdown is coming soon; for now, paste the UUID.</p>
-        </div>
-
         <div>
            <label className="block text-[13px] font-semibold text-text mb-1.5 tracking-wide">CSV File</label>
            

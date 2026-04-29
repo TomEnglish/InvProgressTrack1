@@ -4,6 +4,7 @@ import AuthGuard from './components/layout/AuthGuard';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Projects from './pages/Projects';
 import Overview from './pages/Overview';
 import EarnedValue from './pages/EarnedValue';
 import Audits from './pages/Audits';
@@ -18,15 +19,20 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        
+
         <Route element={<AuthGuard />}>
-          <Route path="/" element={<Layout />}>
+          <Route path="/" element={<Projects />} />
+
+          <Route path="/p/:projectId" element={<Layout />}>
             <Route index element={<Overview />} />
             <Route path="ev" element={<EarnedValue />} />
             <Route path="audits" element={<Audits />} />
             <Route path="periods" element={<Periods />} />
             <Route path="upload" element={<Upload />} />
-            <Route path="admin" element={<Admin />} />
+          </Route>
+
+          <Route path="/admin" element={<Layout />}>
+            <Route index element={<Admin />} />
           </Route>
         </Route>
       </Routes>

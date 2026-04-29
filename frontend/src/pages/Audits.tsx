@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Badge from '../components/ui/Badge';
 
 export default function Audits() {
-  const [projectId] = useState('550e8400-e29b-41d4-a716-446655440000'); // Mock hook
+  const { projectId } = useParams<{ projectId: string }>();
   const [filterText, setFilterText] = useState('');
+  if (!projectId) return null;
 
   const { data: items, isLoading } = useQuery({
     queryKey: ['progress_items', projectId],

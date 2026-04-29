@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface Snapshot {
@@ -13,16 +14,20 @@ interface Snapshot {
 }
 
 export default function EarnedValue() {
+  const { projectId } = useParams<{ projectId: string }>();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!projectId) return;
     async function fetchSnapshots() {
       try {
         const { data, error } = await supabase
           .from('period_snapshots')
           .select('*')
+          .eq('project_id', projectId)
+          .eq('kind', 'weekly')
           .order('snapshot_date', { ascending: true });
 
         if (error) throw error;
@@ -35,7 +40,9 @@ export default function EarnedValue() {
     }
 
     fetchSnapshots();
-  }, []);
+  }, [projectId]);
+
+  if (!projectId) return null;
 
   if (loading) return <div className="p-4 text-text-muted">Loading Earned Value Data...</div>;
   if (error) return <div className="p-4 text-red-500 font-semibold">Error: {error}</div>;
