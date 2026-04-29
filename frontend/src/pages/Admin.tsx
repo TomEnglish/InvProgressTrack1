@@ -18,7 +18,7 @@ export default function Admin() {
   const [showInvite, setShowInvite] = useState(false);
   const [iEmail, setIEmail] = useState('');
   const [iPass, setIPass] = useState('');
-  const [iRole, setIRole] = useState('viewer');
+  const [iRole, setIRole] = useState('member');
   const [iError, setIError] = useState('');
 
   const { data: users, isLoading, error } = useQuery({
@@ -117,22 +117,22 @@ export default function Admin() {
                   <td className="px-6 py-4 font-medium text-text">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-md tracking-wider ${
-                      u.role === 'admin' 
-                        ? 'bg-violet-50 dark:bg-info-soft text-violet-700 dark:text-info border border-violet-200 dark:border-info/30' 
+                      u.role === 'tenant_admin'
+                        ? 'bg-violet-50 dark:bg-info-soft text-violet-700 dark:text-info border border-violet-200 dark:border-info/30'
                         : 'bg-canvas text-text-muted border border-border'
                     }`}>
-                      {u.role === 'admin' ? <Shield size={12} className="mr-1.5" /> : null}
-                      {u.role.toUpperCase()}
+                      {u.role === 'tenant_admin' ? <Shield size={12} className="mr-1.5" /> : null}
+                      {u.role === 'tenant_admin' ? 'TENANT ADMIN' : 'MEMBER'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <button 
-                      title={u.role === 'admin' ? 'Demote to Viewer' : 'Promote to Admin'}
-                      onClick={() => toggleRoleMut.mutate({ id: u.id, newRole: u.role === 'admin' ? 'viewer' : 'admin' })}
+                    <button
+                      title={u.role === 'tenant_admin' ? 'Demote to Member' : 'Promote to Tenant Admin'}
+                      onClick={() => toggleRoleMut.mutate({ id: u.id, newRole: u.role === 'tenant_admin' ? 'member' : 'tenant_admin' })}
                       className="p-2 text-text-subtle hover:text-primary bg-canvas border border-border rounded transition-colors"
                     >
-                      {u.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
+                      {u.role === 'tenant_admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
                     </button>
                     <button 
                       title="Permanently Delete Account"
@@ -175,8 +175,8 @@ export default function Admin() {
               <div>
                 <label className="block text-xs font-semibold text-text mb-1.5 tracking-wide">Role</label>
                 <select value={iRole} onChange={e => setIRole(e.target.value)} className="w-full p-2.5 bg-canvas border border-border rounded-md text-sm outline-none focus:border-primary transition-colors text-text">
-                  <option value="viewer">Viewer (read only)</option>
-                  <option value="admin">Administrator (full access)</option>
+                  <option value="member">Member (project-scoped access)</option>
+                  <option value="tenant_admin">Tenant Admin (full access)</option>
                 </select>
               </div>
             </div>

@@ -36,11 +36,14 @@ serve(async (req) => {
         items.map((item: any) => ({
           project_id: projectId,
           discipline_id: item.discipline_id,
-          // optional fields depending on the exact spreadsheet
           dwg: item.dwg,
           budget_hrs: item.budget_hrs,
           actual_hrs: item.actual_hrs,
-          percent_complete: item.percent_complete
+          percent_complete: item.percent_complete,
+          unit: item.unit,
+          budget_qty: item.budget_qty,
+          actual_qty: item.actual_qty,
+          foreman_name: item.foreman_name
         }))
       )
 

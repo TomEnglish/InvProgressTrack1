@@ -27,11 +27,26 @@ export function validatePayload(payload: any) {
       throw new Error(`Invalid percent complete for item: ${itemReference}. Must be 0-100.`);
     }
 
+    const unit = (item.unit ?? 'HRS').toString().trim() || 'HRS';
+    const budgetQty = item.budget_qty != null ? Number(item.budget_qty) : null;
+    const actualQty = item.actual_qty != null ? Number(item.actual_qty) : null;
+
+    if (budgetQty != null && (isNaN(budgetQty) || budgetQty < 0)) {
+      throw new Error(`Invalid or negative budget qty for item: ${itemReference}`);
+    }
+    if (actualQty != null && (isNaN(actualQty) || actualQty < 0)) {
+      throw new Error(`Invalid or negative actual qty for item: ${itemReference}`);
+    }
+
     return {
       ...item,
       budget_hrs: budget,
       actual_hrs: actual,
-      percent_complete: completed
+      percent_complete: completed,
+      unit,
+      budget_qty: budgetQty,
+      actual_qty: actualQty,
+      foreman_name: item.foreman_name ?? null
     };
   });
 
