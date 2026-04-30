@@ -18,14 +18,6 @@ export default function Layout() {
   const { projectId } = useParams();
   const isProjectScope = !!projectId;
 
-  const projectTabs = projectId ? [
-    { name: 'Executive Overview', path: `/p/${projectId}` },
-    { name: 'Earned Value',       path: `/p/${projectId}/ev` },
-    { name: 'Progress Audits',    path: `/p/${projectId}/audits` },
-    { name: 'Period Tracking',    path: `/p/${projectId}/periods` },
-    { name: 'Data Upload',        path: `/p/${projectId}/upload` },
-  ] : [];
-
   const { data: myProjects } = useQuery({
     queryKey: ['my_projects'],
     queryFn: async () => {
@@ -37,6 +29,17 @@ export default function Layout() {
 
   const activeProject = myProjects?.find(p => p.id === projectId);
   const isTenantAdmin = myProjects?.some(p => p.my_project_role === 'tenant_admin');
+  const canManageProject = activeProject?.my_project_role === 'tenant_admin'
+                        || activeProject?.my_project_role === 'admin';
+
+  const projectTabs = projectId ? [
+    { name: 'Executive Overview', path: `/p/${projectId}` },
+    { name: 'Earned Value',       path: `/p/${projectId}/ev` },
+    { name: 'Progress Audits',    path: `/p/${projectId}/audits` },
+    { name: 'Period Tracking',    path: `/p/${projectId}/periods` },
+    { name: 'Data Upload',        path: `/p/${projectId}/upload` },
+    ...(canManageProject ? [{ name: 'Settings', path: `/p/${projectId}/settings` }] : []),
+  ] : [];
 
   const [theme, setTheme] = useState(localStorage.getItem('invenio-theme') || 'light');
 

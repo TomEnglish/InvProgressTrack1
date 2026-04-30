@@ -11,6 +11,7 @@ import Audits from './pages/Audits';
 import Periods from './pages/Periods';
 import Upload from './pages/Upload';
 import Admin from './pages/Admin';
+import ProjectSettings from './pages/ProjectSettings';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="audits" element={<Audits />} />
             <Route path="periods" element={<Periods />} />
             <Route path="upload" element={<Upload />} />
+            <Route path="settings" element={<ProjectSettings />} />
           </Route>
 
           <Route path="/admin" element={<Layout />}>
