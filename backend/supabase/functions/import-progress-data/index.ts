@@ -24,12 +24,11 @@ serve(async (req) => {
 
     const rawPayload = await req.json()
     const { projectId, items } = validatePayload(rawPayload)
+    const weekEnding: string | null = rawPayload.weekEnding ?? null
+    const label: string = rawPayload.label?.trim() ||
+      `Snapshot ${weekEnding ?? new Date().toISOString().slice(0, 10)}`
+    const sourceFilename: string | null = rawPayload.sourceFilename ?? null
 
-    // 1. Validate permissions
-    // Supabase JS client authenticates strictly out of the box via the user's Authorization header,
-    // so any inserts here conform strictly to Row Level Security constraints (tenant/project).
-
-    // 2. Perform bulk upsert or insert
     const { error: insertError } = await supabaseClient
       .from('progress_items')
       .upsert(
@@ -49,22 +48,27 @@ serve(async (req) => {
 
     if (insertError) throw insertError
 
-    // 3. Kick off period snapshot generation synchronously (optional, can be done separated)
-    const label = `Import generated snapshot - ${new Date().toISOString()}`
-    const { error: rpcError } = await supabaseClient.rpc('create_period_snapshot', {
+    const { data: snapId, error: rpcError } = await supabaseClient.rpc('create_period_snapshot', {
       p_id: projectId,
-      p_label: label
+      p_label: label,
+      p_week_ending: weekEnding,
+      p_source_filename: sourceFilename
     })
 
     if (rpcError) throw rpcError
 
-    return new Response(JSON.stringify({ success: true, count: items.length }), {
+    return new Response(JSON.stringify({
+      success: true,
+      count: items.length,
+      snapshotId: snapId,
+      label
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
