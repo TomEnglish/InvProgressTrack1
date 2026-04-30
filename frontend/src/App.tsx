@@ -12,6 +12,7 @@ import Periods from './pages/Periods';
 import Upload from './pages/Upload';
 import Admin from './pages/Admin';
 import ProjectSettings from './pages/ProjectSettings';
+import DisciplineProgress from './pages/DisciplineProgress';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route index element={<Overview />} />
             <Route path="ev" element={<EarnedValue />} />
             <Route path="audits" element={<Audits />} />
+            <Route path="discipline-progress" element={<DisciplineProgress />} />
             <Route path="periods" element={<Periods />} />
             <Route path="upload" element={<Upload />} />
             <Route path="settings" element={<ProjectSettings />} />

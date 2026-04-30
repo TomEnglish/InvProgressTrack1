@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Settings as SettingsIcon, Calculator, History, UserPlus, Trash2, Shield, AlertTriangle } from 'lucide-react';
@@ -94,8 +94,8 @@ export default function ProjectSettings() {
 
       {tab === 'general'   && <GeneralTab project={project} />}
       {tab === 'members'   && <MembersTab projectId={projectId} canManage={canManage} />}
-      {tab === 'qty-rollup'&& <QtyRollupTab projectId={projectId} />}
-      {tab === 'baseline'  && <BaselineTab projectId={projectId} />}
+      {tab === 'qty-rollup'&& <QtyRollupTab projectId={projectId} canManage={canManage} />}
+      {tab === 'baseline'  && <BaselineTab projectId={projectId} canManage={canManage} />}
     </div>
   );
 }
@@ -348,7 +348,17 @@ function AddMemberModal({
   );
 }
 
-function QtyRollupTab({ projectId }: { projectId: string }) {
+type RollupMode = 'hours_weighted' | 'equal' | 'custom';
+
+interface RollupContribution { discipline_id: string; name: string; weight: number; pct_qty: number | null }
+
+function QtyRollupTab({ projectId, canManage }: { projectId: string; canManage: boolean }) {
+  const qc = useQueryClient();
+  const [mode, setMode] = useState<RollupMode | null>(null);
+  const [weights, setWeights] = useState<Record<string, number>>({});
+  const [errMsg, setErrMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
   const { data: rollup, isLoading } = useQuery({
     queryKey: ['project_qty_rollup', projectId],
     queryFn: async () => {
@@ -358,41 +368,139 @@ function QtyRollupTab({ projectId }: { projectId: string }) {
     }
   });
 
-  if (isLoading) return <div className="text-sm text-text-muted">Loading...</div>;
-  if (!rollup) return <div className="text-sm text-text-muted">No rollup data.</div>;
+  useEffect(() => {
+    if (rollup && mode === null) {
+      setMode(rollup.mode as RollupMode);
+      const initial: Record<string, number> = {};
+      for (const d of rollup.per_discipline as RollupContribution[]) initial[d.discipline_id] = d.weight;
+      setWeights(initial);
+    }
+  }, [rollup, mode]);
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!mode) return;
+      const payload: { p_id: string; p_mode: RollupMode; p_weights?: { discipline_id: string; weight: number }[] } = {
+        p_id: projectId, p_mode: mode
+      };
+      if (mode === 'custom') {
+        payload.p_weights = Object.entries(weights).map(([discipline_id, weight]) => ({ discipline_id, weight }));
+      }
+      const { error } = await supabase.rpc('admin_set_qty_rollup', payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSuccessMsg('Saved.');
+      setTimeout(() => setSuccessMsg(''), 2500);
+      qc.invalidateQueries({ queryKey: ['project_qty_rollup', projectId] });
+    },
+    onError: (e: Error) => setErrMsg(e.message)
+  });
+
+  if (isLoading || !rollup || mode === null) return <div className="text-sm text-text-muted">Loading...</div>;
+
+  const contributions = rollup.per_discipline as RollupContribution[];
+  const sumWeights = Object.values(weights).reduce((acc, v) => acc + (Number(v) || 0), 0);
+  const sumIsValid = Math.abs(sumWeights - 1.0) <= 0.001;
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold mb-1">Active Mode</div>
-          <div className="text-sm text-text font-semibold">{rollup.mode === 'hours_weighted' ? 'Hours-weighted' : rollup.mode === 'equal' ? 'Equal-weighted' : 'Custom'}</div>
-        </div>
+      {errMsg && <div className="p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm rounded-md font-semibold border border-red-200 dark:border-red-900/50">{errMsg}</div>}
+      {successMsg && <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-sm rounded-md font-semibold border border-emerald-200 dark:border-emerald-900/50">{successMsg}</div>}
+
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm space-y-5">
         <div>
           <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold mb-1">Composite % (current)</div>
           <div className="text-3xl font-bold text-primary tabular-nums">{Number(rollup.composite_pct).toFixed(2)}%</div>
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold mb-2">Per-discipline contributions</div>
-          <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
-            {(rollup.per_discipline as { name: string; weight: number; pct_qty: number | null }[]).map((d, i) => (
-              <li key={i} className="px-3 py-2 flex items-center justify-between text-sm">
-                <span className="text-text">{d.name}</span>
-                <span className="text-text-muted tabular-nums">
-                  weight {(d.weight * 100).toFixed(1)}% · qty {d.pct_qty == null ? '—' : `${(d.pct_qty * 100).toFixed(1)}%`}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold mb-2">Mode</div>
+          <div className="space-y-2">
+            <RadioOption label="Hours-weighted" subLabel="Weight each discipline by its share of total budget hours (recommended default)." value="hours_weighted" current={mode} onPick={setMode} disabled={!canManage} />
+            <RadioOption label="Equal-weighted" subLabel="Each discipline contributes 1/N. Useful for early-stage projects." value="equal" current={mode} onPick={setMode} disabled={!canManage} />
+            <RadioOption label="Custom" subLabel="PM-defined weights per discipline. Must sum to 100%." value="custom" current={mode} onPick={setMode} disabled={!canManage} />
+          </div>
         </div>
+
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold mb-2">Per-discipline weights</div>
+          <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
+            {contributions.map(d => {
+              const editable = canManage && mode === 'custom';
+              const w = mode === 'custom' ? (weights[d.discipline_id] ?? 0) : d.weight;
+              return (
+                <li key={d.discipline_id} className="px-3 py-2.5 flex items-center justify-between gap-3 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-text font-medium">{d.name}</div>
+                    <div className="text-xs text-text-muted">qty completion: {d.pct_qty == null ? '—' : `${(d.pct_qty * 100).toFixed(1)}%`}</div>
+                  </div>
+                  {editable ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01" min={0} max={1}
+                        value={w}
+                        onChange={e => setWeights(prev => ({ ...prev, [d.discipline_id]: Number(e.target.value) }))}
+                        className="w-24 p-1.5 bg-canvas border border-border rounded text-sm tabular-nums text-right outline-none focus:border-primary text-text"
+                      />
+                      <span className="text-xs text-text-muted w-16 text-right tabular-nums">{(w * 100).toFixed(1)}%</span>
+                    </div>
+                  ) : (
+                    <span className="text-text-muted tabular-nums w-20 text-right">{(w * 100).toFixed(1)}%</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {mode === 'custom' && (
+            <div className={`mt-2 text-xs font-semibold ${sumIsValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              Sum: {(sumWeights * 100).toFixed(2)}%{!sumIsValid && ' — must equal 100%'}
+            </div>
+          )}
+        </div>
+
+        {canManage && (
+          <div className="flex justify-end pt-3 border-t border-border">
+            <button
+              onClick={() => { setErrMsg(''); saveMut.mutate(); }}
+              disabled={saveMut.isPending || (mode === 'custom' && !sumIsValid)}
+              className="px-5 py-2.5 text-sm font-semibold bg-primary text-white rounded-md shadow-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
+            >
+              {saveMut.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        )}
       </div>
-      <p className="text-xs text-text-subtle">Mode + custom weight editor coming in a follow-up.</p>
+
+      <p className="text-xs text-text-subtle">Mode and weight changes apply to future snapshots only — historical composites are frozen.</p>
     </div>
   );
 }
 
-function BaselineTab({ projectId }: { projectId: string }) {
+function RadioOption({ label, subLabel, value, current, onPick, disabled }: {
+  label: string; subLabel: string; value: RollupMode; current: RollupMode; onPick: (v: RollupMode) => void; disabled?: boolean;
+}) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && onPick(value)}
+      disabled={disabled}
+      className={`w-full text-left flex items-start gap-3 px-3 py-2.5 rounded border transition-colors ${active ? 'border-primary bg-primary-soft' : 'border-border bg-canvas hover:border-primary'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+    >
+      <span className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 ${active ? 'border-primary bg-primary' : 'border-border bg-canvas'}`}>
+        {active && <span className="block w-1.5 h-1.5 m-[5px] rounded-full bg-white" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <div className={`text-sm font-semibold ${active ? 'text-primary' : 'text-text'}`}>{label}</div>
+        <div className="text-xs text-text-muted">{subLabel}</div>
+      </span>
+    </button>
+  );
+}
+
+function BaselineTab({ projectId, canManage }: { projectId: string; canManage: boolean }) {
   const qc = useQueryClient();
   const [errMsg, setErrMsg] = useState('');
 
@@ -434,7 +542,7 @@ function BaselineTab({ projectId }: { projectId: string }) {
           )}
         </div>
 
-        {baseline && (
+        {baseline && canManage && (
           <div className="pt-4 border-t border-border">
             <div className="flex items-start gap-3">
               <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />

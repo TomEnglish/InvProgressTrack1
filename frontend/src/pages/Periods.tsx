@@ -34,6 +34,10 @@ interface ComparisonRow {
   prev_qty: number | null;
   curr_qty: number | null;
   delta_qty: number | null;
+  baseline_pct: number | null;
+  baseline_hrs: number | null;
+  drift_vs_baseline_pct: number | null;
+  drift_vs_baseline_hrs: number | null;
   movement: 'up' | 'flat' | 'down';
 }
 
@@ -152,6 +156,10 @@ export default function Periods() {
     return { progressed, flat, regressed, totalDeltaHrs };
   }, [comparison]);
 
+  const hasBaselineData = useMemo(() => {
+    return Boolean(comparison?.some(r => r.baseline_pct != null));
+  }, [comparison]);
+
   if (!projectId) return null;
 
   if (snapshots && snapshots.length < 2) {
@@ -257,18 +265,21 @@ export default function Periods() {
                 <th className="px-4 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-right">Prev Hrs</th>
                 <th className="px-4 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-right">Curr Hrs</th>
                 <th className="px-4 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-right">Δ Hrs</th>
+                {hasBaselineData && (
+                  <th className="px-4 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-right" title="Current % minus 1st-audit baseline %">vs 1st Audit</th>
+                )}
                 <th className="px-4 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-center">Move</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isCompareLoading && (
-                <tr><td colSpan={11} className="px-6 py-8 text-center text-text-muted">Computing comparison...</td></tr>
+                <tr><td colSpan={hasBaselineData ? 12 : 11} className="px-6 py-8 text-center text-text-muted">Computing comparison...</td></tr>
               )}
               {!isCompareLoading && (!comparison || comparison.length === 0) && (
-                <tr><td colSpan={11} className="px-6 py-8 text-center text-text-muted">No items to compare.</td></tr>
+                <tr><td colSpan={hasBaselineData ? 12 : 11} className="px-6 py-8 text-center text-text-muted">No items to compare.</td></tr>
               )}
               {!isCompareLoading && grouped.map(group => (
-                <GroupRows key={group.key} group={group} groupBy={groupBy} />
+                <GroupRows key={group.key} group={group} groupBy={groupBy} hasBaselineData={hasBaselineData} />
               ))}
             </tbody>
           </table>
@@ -278,7 +289,7 @@ export default function Periods() {
   );
 }
 
-function GroupRows({ group, groupBy }: { group: { key: string; label: string; rows: ComparisonRow[] }; groupBy: GroupBy }) {
+function GroupRows({ group, groupBy, hasBaselineData }: { group: { key: string; label: string; rows: ComparisonRow[] }; groupBy: GroupBy; hasBaselineData: boolean }) {
   const subtotal = useMemo(() => {
     let prevHrs = 0, currHrs = 0, deltaHrs = 0;
     for (const r of group.rows) {
@@ -302,15 +313,16 @@ function GroupRows({ group, groupBy }: { group: { key: string; label: string; ro
           <td className={`px-4 py-2 text-right text-xs font-semibold tabular-nums ${subtotal.deltaHrs > 0 ? 'text-emerald-500' : subtotal.deltaHrs < 0 ? 'text-red-500' : 'text-text-muted'}`}>
             {fmtDelta(subtotal.deltaHrs)}
           </td>
+          {hasBaselineData && <td></td>}
           <td></td>
         </tr>
       )}
-      {group.rows.map(r => <ItemRow key={r.progress_item_id} r={r} />)}
+      {group.rows.map(r => <ItemRow key={r.progress_item_id} r={r} hasBaselineData={hasBaselineData} />)}
     </>
   );
 }
 
-function ItemRow({ r }: { r: ComparisonRow }) {
+function ItemRow({ r, hasBaselineData }: { r: ComparisonRow; hasBaselineData: boolean }) {
   const movement =
     r.movement === 'up'   ? <span className="text-emerald-500" title="Progressed"><ArrowUpRight size={14} /></span> :
     r.movement === 'down' ? <span className="text-red-500" title="Regressed"><ArrowDownRight size={14} /></span> :
@@ -337,6 +349,16 @@ function ItemRow({ r }: { r: ComparisonRow }) {
       <td className="px-4 py-2.5 text-right tabular-nums text-text-muted">{fmtNum(r.prev_hrs, 0)}</td>
       <td className="px-4 py-2.5 text-right tabular-nums text-text font-medium">{fmtNum(r.curr_hrs, 0)}</td>
       <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${deltaHrsClass}`}>{fmtDelta(r.delta_hrs)}</td>
+      {hasBaselineData && (
+        <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${
+          r.drift_vs_baseline_pct == null ? 'text-text-subtle'
+          : Number(r.drift_vs_baseline_pct) > 0 ? 'text-emerald-500'
+          : Number(r.drift_vs_baseline_pct) < 0 ? 'text-red-500'
+          : 'text-text-muted'
+        }`} title={r.baseline_pct != null ? `Baseline ${Number(r.baseline_pct).toFixed(1)}%` : 'Not in 1st-audit baseline'}>
+          {r.drift_vs_baseline_pct == null ? '—' : fmtDelta(r.drift_vs_baseline_pct, '%')}
+        </td>
+      )}
       <td className="px-4 py-2.5 text-center">{movement}</td>
     </tr>
   );

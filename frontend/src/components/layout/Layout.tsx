@@ -36,6 +36,7 @@ export default function Layout() {
     { name: 'Executive Overview', path: `/p/${projectId}` },
     { name: 'Earned Value',       path: `/p/${projectId}/ev` },
     { name: 'Progress Audits',    path: `/p/${projectId}/audits` },
+    { name: 'Discipline Progress',path: `/p/${projectId}/discipline-progress` },
     { name: 'Period Tracking',    path: `/p/${projectId}/periods` },
     { name: 'Data Upload',        path: `/p/${projectId}/upload` },
     ...(canManageProject ? [{ name: 'Settings', path: `/p/${projectId}/settings` }] : []),

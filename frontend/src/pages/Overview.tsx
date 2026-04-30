@@ -39,6 +39,15 @@ export default function Overview() {
     }
   });
 
+  const { data: qtyRollup } = useQuery({
+    queryKey: ['project_qty_rollup', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_project_qty_rollup', { p_id: projectId });
+      if (error) throw error;
+      return data?.[0] ?? null;
+    }
+  });
+
   if (isProjectLoading || isDisciplineLoading || isSnapshotsLoading) {
     return <div className="p-8 text-center text-text-muted font-medium">Resolving Supabase Analytics Dashboard...</div>;
   }
@@ -73,11 +82,18 @@ export default function Overview() {
           subValue="SV = EV - PV" 
           variant={kpis.sv >= 0 ? 'success' : 'danger'} 
         />
-        <KpiCard 
-          label="Total Tracked Items" 
-          value={kpis.total_items} 
-          subValue={`${disciplines.length} Disciplines`} 
+        <KpiCard
+          label="Total Tracked Items"
+          value={kpis.total_items}
+          subValue={`${disciplines.length} Disciplines`}
         />
+        {qtyRollup && (
+          <KpiCard
+            label="Composite % (qty)"
+            value={`${Number(qtyRollup.composite_pct).toFixed(1)}%`}
+            subValue={qtyRollup.mode === 'hours_weighted' ? 'Hours-weighted' : qtyRollup.mode === 'equal' ? 'Equal-weighted' : 'Custom weights'}
+          />
+        )}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

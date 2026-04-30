@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { UserPlus, Shield, ShieldOff, Trash2 } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, Trash2, Link2 } from 'lucide-react';
 
 interface DbUser {
   id: string;
   email: string;
   role: string;
   created_at: string;
+}
+
+interface UnmatchedForeman {
+  foreman_name: string;
+  row_count: number;
+  project_count: number;
 }
 
 export default function Admin() {
@@ -153,6 +159,8 @@ export default function Admin() {
         </div>
       </div>
 
+      <ForemanReconciliation users={users ?? []} />
+
       {showInvite && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md p-6 space-y-5">
@@ -199,6 +207,99 @@ export default function Admin() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ForemanReconciliation({ users }: { users: DbUser[] }) {
+  const qc = useQueryClient();
+  const [errMsg, setErrMsg] = useState('');
+  const [linking, setLinking] = useState<Record<string, string>>({});
+
+  const { data: unmatched, isLoading } = useQuery({
+    queryKey: ['unmatched_foremen'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_unmatched_foremen');
+      if (error) throw error;
+      return (data || []) as UnmatchedForeman[];
+    }
+  });
+
+  const linkMut = useMutation({
+    mutationFn: async ({ name, userId }: { name: string; userId: string }) => {
+      const { error } = await supabase.rpc('admin_link_foreman_alias', { p_name: name, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['unmatched_foremen'] });
+    },
+    onError: (e: Error) => setErrMsg(e.message)
+  });
+
+  return (
+    <div className="space-y-3 pt-4">
+      <div>
+        <h3 className="text-lg font-bold text-text">Foreman Reconciliation</h3>
+        <p className="text-sm text-text-muted mt-1">Foreman names appearing in audit imports without a linked user. Linking adds an alias and retroactively fills the user_id on matching items.</p>
+      </div>
+
+      {errMsg && (
+        <div className="p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm rounded-md font-semibold border border-red-200 dark:border-red-900/50">
+          {errMsg}
+        </div>
+      )}
+
+      <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+        {isLoading && <div className="p-6 text-center text-text-muted">Loading...</div>}
+        {!isLoading && (!unmatched || unmatched.length === 0) && (
+          <div className="p-6 text-center text-sm text-text-muted">No unmatched foreman names — every imported foreman is linked to a user.</div>
+        )}
+        {!isLoading && unmatched && unmatched.length > 0 && (
+          <table className="w-full text-sm text-left">
+            <thead className="bg-[#F8FAFC] dark:bg-raised text-text border-b border-border">
+              <tr>
+                <th className="px-6 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted">Foreman name (raw)</th>
+                <th className="px-6 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-right">Items</th>
+                <th className="px-6 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted text-right">Projects</th>
+                <th className="px-6 py-3 font-semibold tracking-wide text-[11px] uppercase text-text-muted">Link to user</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {unmatched.map(f => (
+                <tr key={f.foreman_name} className="hover:bg-raised transition-colors">
+                  <td className="px-6 py-3 font-medium text-text">{f.foreman_name}</td>
+                  <td className="px-6 py-3 text-right tabular-nums text-text-muted">{f.row_count}</td>
+                  <td className="px-6 py-3 text-right tabular-nums text-text-muted">{f.project_count}</td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={linking[f.foreman_name] ?? ''}
+                        onChange={e => setLinking(prev => ({ ...prev, [f.foreman_name]: e.target.value }))}
+                        className="text-xs px-2 py-1.5 bg-canvas border border-border rounded text-text outline-none focus:border-primary"
+                      >
+                        <option value="">Pick user...</option>
+                        {users.map(u => <option key={u.id} value={u.id}>{u.email}</option>)}
+                      </select>
+                      <button
+                        onClick={() => {
+                          const userId = linking[f.foreman_name];
+                          if (!userId) return;
+                          setErrMsg('');
+                          linkMut.mutate({ name: f.foreman_name, userId });
+                        }}
+                        disabled={!linking[f.foreman_name] || linkMut.isPending}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-primary text-white rounded hover:bg-primary-hover transition-colors disabled:opacity-50"
+                      >
+                        <Link2 size={12} /> Link
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
