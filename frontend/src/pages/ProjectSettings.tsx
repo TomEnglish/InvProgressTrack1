@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Settings as SettingsIcon, Calculator, History, UserPlus, Trash2, Shield, AlertTriangle } from 'lucide-react';
+import { Users, Settings as SettingsIcon, Calculator, History, UserPlus, Trash2, Shield, AlertTriangle, Layers, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-type TabId = 'general' | 'members' | 'qty-rollup' | 'baseline';
+type TabId = 'general' | 'members' | 'milestones' | 'qty-rollup' | 'baseline';
 type ProjectRole = 'admin' | 'editor' | 'viewer';
 
 interface MyProject {
@@ -60,6 +60,7 @@ export default function ProjectSettings() {
   const tabs: { id: TabId; label: string; icon: typeof Users }[] = [
     { id: 'general',    label: 'General',     icon: SettingsIcon },
     { id: 'members',    label: 'Members',     icon: Users },
+    { id: 'milestones', label: 'Milestones',  icon: Layers },
     { id: 'qty-rollup', label: 'Qty Rollup',  icon: Calculator },
     { id: 'baseline',   label: 'Baseline',    icon: History },
   ];
@@ -94,6 +95,7 @@ export default function ProjectSettings() {
 
       {tab === 'general'   && <GeneralTab project={project} />}
       {tab === 'members'   && <MembersTab projectId={projectId} canManage={canManage} />}
+      {tab === 'milestones'&& <MilestonesTab projectId={projectId} canManage={canManage} />}
       {tab === 'qty-rollup'&& <QtyRollupTab projectId={projectId} canManage={canManage} />}
       {tab === 'baseline'  && <BaselineTab projectId={projectId} canManage={canManage} />}
     </div>
@@ -474,6 +476,182 @@ function QtyRollupTab({ projectId, canManage }: { projectId: string; canManage: 
       </div>
 
       <p className="text-xs text-text-subtle">Mode and weight changes apply to future snapshots only — historical composites are frozen.</p>
+    </div>
+  );
+}
+
+function MilestonesTab({ projectId, canManage }: { projectId: string; canManage: boolean }) {
+  const qc = useQueryClient();
+  const [disciplineId, setDisciplineId] = useState<string>('');
+  const [draft, setDraft] = useState<{ name: string; weight: number; sort_order: number }[] | null>(null);
+  const [errMsg, setErrMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const { data: disciplines } = useQuery({
+    queryKey: ['disciplines', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('disciplines').select('id, name').eq('project_id', projectId).order('name');
+      if (error) throw error;
+      return (data || []) as { id: string; name: string }[];
+    },
+    enabled: !!projectId
+  });
+
+  useEffect(() => {
+    if (!disciplineId && disciplines && disciplines.length > 0) setDisciplineId(disciplines[0].id);
+  }, [disciplines, disciplineId]);
+
+  const { data: milestones } = useQuery({
+    queryKey: ['milestone_templates', disciplineId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_milestones', { d_id: disciplineId });
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; weight: number; sort_order: number }[];
+    },
+    enabled: !!disciplineId
+  });
+
+  useEffect(() => {
+    if (milestones) setDraft(milestones.map(m => ({ name: m.name, weight: Number(m.weight), sort_order: m.sort_order })));
+  }, [milestones]);
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!draft) return;
+      const sorted = [...draft]
+        .map((m, idx) => ({ name: m.name.trim(), weight: m.weight, sort_order: idx + 1 }))
+        .filter(m => m.name.length > 0);
+      const { error } = await supabase.rpc('admin_set_milestones', {
+        d_id: disciplineId,
+        p_milestones: sorted
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSuccessMsg('Saved.');
+      setTimeout(() => setSuccessMsg(''), 2500);
+      qc.invalidateQueries({ queryKey: ['milestone_templates', disciplineId] });
+      qc.invalidateQueries({ queryKey: ['progress_items', projectId] });
+    },
+    onError: (e: Error) => setErrMsg(e.message)
+  });
+
+  const sumWeights = useMemo(() => (draft ?? []).reduce((acc, m) => acc + (Number(m.weight) || 0), 0), [draft]);
+  const sumIsValid = Math.abs(sumWeights - 1.0) <= 0.001;
+
+  const updateRow = (idx: number, patch: Partial<{ name: string; weight: number }>) => {
+    setDraft(prev => prev ? prev.map((m, i) => i === idx ? { ...m, ...patch } : m) : prev);
+  };
+  const removeRow = (idx: number) => setDraft(prev => prev ? prev.filter((_, i) => i !== idx) : prev);
+  const addRow = () => setDraft(prev => [...(prev ?? []), { name: '', weight: 0, sort_order: (prev?.length ?? 0) + 1 }]);
+  const moveRow = (idx: number, dir: -1 | 1) => {
+    setDraft(prev => {
+      if (!prev) return prev;
+      const j = idx + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
+  };
+  const normalize = () => {
+    setDraft(prev => {
+      if (!prev) return prev;
+      const sum = prev.reduce((acc, m) => acc + (Number(m.weight) || 0), 0);
+      if (sum <= 0) return prev;
+      return prev.map(m => ({ ...m, weight: Number(((Number(m.weight) || 0) / sum).toFixed(4)) }));
+    });
+  };
+
+  if (!disciplines || disciplines.length === 0) {
+    return <div className="text-sm text-text-muted">No disciplines configured.</div>;
+  }
+
+  return (
+    <div className="space-y-4 max-w-3xl">
+      {errMsg && <div className="p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm rounded-md font-semibold border border-red-200 dark:border-red-900/50">{errMsg}</div>}
+      {successMsg && <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-sm rounded-md font-semibold border border-emerald-200 dark:border-emerald-900/50">{successMsg}</div>}
+
+      <div className="bg-surface border border-border rounded-xl p-5 shadow-sm space-y-4">
+        <div>
+          <label className="block text-[10px] uppercase tracking-wider text-text-muted font-bold mb-1.5">Audit (Discipline)</label>
+          <select value={disciplineId} onChange={e => setDisciplineId(e.target.value)}
+            className="w-full p-2 bg-canvas border border-border rounded text-sm text-text outline-none focus:border-primary">
+            {disciplines.map(d => <option key={d.id} value={d.id}>{d.name} Audit</option>)}
+          </select>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-bold">Milestones (in order)</span>
+            <span className={`text-xs font-semibold tabular-nums ${sumIsValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              Sum: {(sumWeights * 100).toFixed(1)}%{!sumIsValid && ' — should be 100%'}
+            </span>
+          </div>
+
+          <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
+            {(draft ?? []).map((m, idx) => (
+              <li key={idx} className="px-3 py-2 flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider text-text-muted font-bold w-8 text-right">#{idx + 1}</span>
+                <input
+                  type="text"
+                  value={m.name}
+                  onChange={e => updateRow(idx, { name: e.target.value })}
+                  disabled={!canManage}
+                  placeholder="Milestone name"
+                  className="flex-1 p-1.5 bg-canvas border border-border rounded text-sm text-text outline-none focus:border-primary disabled:opacity-60"
+                />
+                <input
+                  type="number"
+                  step="0.01" min={0} max={1}
+                  value={m.weight}
+                  onChange={e => updateRow(idx, { weight: Number(e.target.value) })}
+                  disabled={!canManage}
+                  className="w-20 p-1.5 bg-canvas border border-border rounded text-sm text-text tabular-nums text-right outline-none focus:border-primary disabled:opacity-60"
+                />
+                <span className="w-12 text-xs text-text-muted tabular-nums text-right">{((Number(m.weight) || 0) * 100).toFixed(1)}%</span>
+                {canManage && (
+                  <>
+                    <button onClick={() => moveRow(idx, -1)} disabled={idx === 0} className="p-1 text-text-subtle hover:text-primary disabled:opacity-30" title="Move up"><ArrowUp size={12} /></button>
+                    <button onClick={() => moveRow(idx, 1)}  disabled={idx === (draft?.length ?? 0) - 1} className="p-1 text-text-subtle hover:text-primary disabled:opacity-30" title="Move down"><ArrowDown size={12} /></button>
+                    <button onClick={() => removeRow(idx)} className="p-1 text-text-subtle hover:text-red-500" title="Remove"><Trash2 size={12} /></button>
+                  </>
+                )}
+              </li>
+            ))}
+            {(draft?.length ?? 0) === 0 && (
+              <li className="px-3 py-4 text-center text-sm text-text-muted">No milestones configured for this audit.</li>
+            )}
+          </ul>
+
+          {canManage && (
+            <div className="flex items-center gap-2 mt-3">
+              <button onClick={addRow} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-canvas border border-border text-text rounded hover:bg-raised transition-colors">
+                <Plus size={12} /> Add milestone
+              </button>
+              <button onClick={normalize} className="px-3 py-1.5 text-xs font-semibold bg-canvas border border-border text-text rounded hover:bg-raised transition-colors" title="Scale weights so they sum to 100%">
+                Normalize to 100%
+              </button>
+            </div>
+          )}
+        </div>
+
+        {canManage && (
+          <div className="flex justify-end pt-3 border-t border-border">
+            <button
+              onClick={() => { setErrMsg(''); saveMut.mutate(); }}
+              disabled={saveMut.isPending}
+              className="px-5 py-2.5 text-sm font-semibold bg-primary text-white rounded-md shadow-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
+            >
+              {saveMut.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-text-subtle">
+        Item percent_complete is computed as Σ(weight × milestone%). Renaming a milestone preserves existing per-item progress; deleting it drops that progress and recomputes overall % for affected items. Imports auto-create new milestone names with a placeholder weight of 1 — rebalance via "Normalize to 100%" after.
+      </p>
     </div>
   );
 }

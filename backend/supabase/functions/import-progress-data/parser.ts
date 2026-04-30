@@ -8,11 +8,10 @@ export function validatePayload(payload: any) {
   if (payload.items.length === 0) {
     throw new Error("Payload items array is empty");
   }
-  
+
   const validItems = payload.items.map((item: any, index: number) => {
     const itemReference = item.dwg || item.name || `Row ${index}`;
-    
-    // Convert string inputs to proper numbers if uploaded via raw CSV logic
+
     const budget = Number(item.budget_hrs || 0);
     const actual = Number(item.actual_hrs || 0);
     const completed = Number(item.percent_complete || 0);
@@ -38,6 +37,15 @@ export function validatePayload(payload: any) {
       throw new Error(`Invalid or negative actual qty for item: ${itemReference}`);
     }
 
+    const milestones = Array.isArray(item.milestones)
+      ? item.milestones
+          .filter((m: any) => m && typeof m.name === 'string' && m.name.trim().length > 0)
+          .map((m: any) => ({
+            name: m.name.toString().trim(),
+            pct: Math.max(0, Math.min(100, Number(m.pct) || 0))
+          }))
+      : [];
+
     return {
       ...item,
       budget_hrs: budget,
@@ -46,7 +54,13 @@ export function validatePayload(payload: any) {
       unit,
       budget_qty: budgetQty,
       actual_qty: actualQty,
-      foreman_name: item.foreman_name ?? null
+      foreman_name: item.foreman_name ?? null,
+      iwp_name: item.iwp_name ?? null,
+      attr_type: item.attr_type ?? null,
+      attr_size: item.attr_size ?? null,
+      attr_spec: item.attr_spec ?? null,
+      line_area: item.line_area ?? null,
+      milestones,
     };
   });
 

@@ -5,6 +5,8 @@ import { ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import HalfGauge from '../components/ui/HalfGauge';
 
+interface MilestoneRow { milestone_template_id: string; percent_complete: number }
+
 interface ProgressItem {
   id: string;
   dwg: string | null;
@@ -18,13 +20,19 @@ interface ProgressItem {
   earned_qty: number | null;
   actual_qty: number | null;
   foreman_name: string | null;
+  attr_type: string | null;
+  attr_size: string | null;
+  attr_spec: string | null;
+  line_area: string | null;
   discipline_id: string;
   iwp_id: string | null;
   disciplines: { name: string } | null;
   iwps: { name: string } | null;
+  progress_item_milestones: MilestoneRow[];
 }
 
 interface Discipline { id: string; name: string }
+interface Milestone { id: string; name: string; weight: number; sort_order: number }
 interface MyProject { id: string; name: string }
 
 const NO_IWP = '__no_iwp__';
@@ -32,9 +40,10 @@ const NO_IWP = '__no_iwp__';
 export default function Audits() {
   const { projectId } = useParams<{ projectId: string }>();
   const [auditDisciplineId, setAuditDisciplineId] = useState<string>('');
-  const [iwpFilter,     setIwpFilter]     = useState<string>('');
-  const [dwgFilter,     setDwgFilter]     = useState<string>('');
-  const [foremanFilter, setForemanFilter] = useState<string>('');
+  const [iwpFilter,       setIwpFilter]      = useState<string>('');
+  const [dwgFilter,       setDwgFilter]      = useState<string>('');
+  const [foremanFilter,   setForemanFilter]  = useState<string>('');
+  const [lineAreaFilter,  setLineAreaFilter] = useState<string>('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: project } = useQuery({
@@ -62,7 +71,7 @@ export default function Audits() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('progress_items')
-        .select('*, disciplines(name), iwps(name)')
+        .select('*, disciplines(name), iwps(name), progress_item_milestones(milestone_template_id, percent_complete)')
         .eq('project_id', projectId)
         .order('dwg');
       if (error) throw error;
@@ -71,7 +80,17 @@ export default function Audits() {
     enabled: !!projectId
   });
 
-  // Default audit discipline = first discipline (or first one with items)
+  const { data: milestones } = useQuery({
+    queryKey: ['milestone_templates', auditDisciplineId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_milestones', { d_id: auditDisciplineId });
+      if (error) throw error;
+      return (data || []) as Milestone[];
+    },
+    enabled: !!auditDisciplineId
+  });
+
+  // Default audit discipline
   useEffect(() => {
     if (auditDisciplineId || !disciplines || disciplines.length === 0) return;
     if (!items) return;
@@ -79,7 +98,6 @@ export default function Audits() {
     setAuditDisciplineId((withItems ?? disciplines[0]).id);
   }, [disciplines, items, auditDisciplineId]);
 
-  // Derived sets for filter dropdowns (constrained to active audit-type)
   const itemsForAudit = useMemo(() => {
     if (!items || !auditDisciplineId) return [];
     return items.filter(i => i.discipline_id === auditDisciplineId);
@@ -103,17 +121,22 @@ export default function Audits() {
     return Array.from(set).sort();
   }, [itemsForAudit]);
 
-  // Apply filters
+  const lineAreaOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of itemsForAudit) if (i.line_area) set.add(i.line_area);
+    return Array.from(set).sort();
+  }, [itemsForAudit]);
+
   const filteredItems = useMemo(() => {
     return itemsForAudit.filter(i => {
       if (iwpFilter && (i.iwps?.name ?? NO_IWP) !== iwpFilter) return false;
       if (dwgFilter && i.dwg !== dwgFilter) return false;
       if (foremanFilter && (i.foreman_name ?? '') !== foremanFilter) return false;
+      if (lineAreaFilter && (i.line_area ?? '') !== lineAreaFilter) return false;
       return true;
     });
-  }, [itemsForAudit, iwpFilter, dwgFilter, foremanFilter]);
+  }, [itemsForAudit, iwpFilter, dwgFilter, foremanFilter, lineAreaFilter]);
 
-  // Group by IWP
   const iwpGroups = useMemo(() => {
     const buckets = new Map<string, { key: string; label: string; items: ProgressItem[] }>();
     for (const i of filteredItems) {
@@ -129,7 +152,6 @@ export default function Audits() {
     });
   }, [filteredItems]);
 
-  // Sidebar KPIs (filtered totals)
   const totals = useMemo(() => {
     let budgetHrs = 0, earnedHrs = 0, budgetQty = 0, earnedQty = 0;
     for (const i of filteredItems) {
@@ -157,10 +179,10 @@ export default function Audits() {
   });
 
   const activeDisciplineName = disciplines?.find(d => d.id === auditDisciplineId)?.name ?? '';
+  const milestoneList = milestones ?? [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 animate-fade-in">
-      {/* Sidebar */}
       <aside className="bg-surface border border-border rounded-xl shadow-sm p-4 space-y-4 self-start">
         <FilterSelect label="Audit Type" value={auditDisciplineId} onChange={setAuditDisciplineId}
           options={disciplines?.map(d => ({ value: d.id, label: `${d.name} Audit` })) ?? []}
@@ -174,6 +196,9 @@ export default function Audits() {
         />
         <FilterSelect label="IWP Foreman" value={foremanFilter} onChange={setForemanFilter}
           options={foremanOptions.map(v => ({ value: v, label: v }))}
+        />
+        <FilterSelect label="Line / Area" value={lineAreaFilter} onChange={setLineAreaFilter}
+          options={lineAreaOptions.map(v => ({ value: v, label: v }))}
         />
 
         <div className="pt-4 border-t border-border space-y-1 text-center">
@@ -194,7 +219,6 @@ export default function Audits() {
         )}
       </aside>
 
-      {/* Main panel */}
       <section className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="bg-[#1e293b] dark:bg-[#0f172a] text-white px-5 py-4 flex items-center gap-4">
           <div className="text-sm font-bold tracking-wide uppercase opacity-90">
@@ -225,25 +249,44 @@ export default function Audits() {
           <table className="w-full text-left">
             <thead className="bg-[#1e293b] dark:bg-[#0f172a] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2.5 font-semibold">IWP / DWG</th>
-                <th className="px-3 py-2.5 font-semibold text-right">% Hrs</th>
-                <th className="px-3 py-2.5 font-semibold text-right">Ern Hrs</th>
-                <th className="px-3 py-2.5 font-semibold text-right">% Qty</th>
-                <th className="px-3 py-2.5 font-semibold text-right">Ern Qty</th>
-                <th className="px-3 py-2.5 font-semibold text-right">Hours</th>
-                <th className="px-3 py-2.5 font-semibold">Foreman</th>
-                <th className="px-3 py-2.5 font-semibold">Description</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">IWP / DWG</th>
+                <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">% Hrs</th>
+                <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">Ern Hrs</th>
+                <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">% Qty</th>
+                <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">Ern Qty</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Type</th>
+                <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">Qty</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">UOM</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Size</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Spec</th>
+                <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">Hours</th>
+                {milestoneList.map((m, idx) => (
+                  <th key={`mhead-${m.id}`} colSpan={2} className="px-3 py-2.5 font-semibold whitespace-nowrap text-center border-l border-white/10">
+                    Item #{idx + 1}
+                  </th>
+                ))}
               </tr>
+              {milestoneList.length > 0 && (
+                <tr className="text-[10px]">
+                  <th colSpan={11}></th>
+                  {milestoneList.map(m => (
+                    <>
+                      <th key={`mname-${m.id}`} className="px-3 py-1.5 font-semibold whitespace-nowrap border-l border-white/10 text-left">{m.name}</th>
+                      <th key={`mpct-${m.id}`}  className="px-3 py-1.5 font-semibold whitespace-nowrap text-right">PCT</th>
+                    </>
+                  ))}
+                </tr>
+              )}
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading && (
-                <tr><td colSpan={8} className="px-6 py-8 text-center text-text-muted">Loading items...</td></tr>
+                <tr><td colSpan={11 + milestoneList.length * 2} className="px-6 py-8 text-center text-text-muted">Loading items...</td></tr>
               )}
               {!isLoading && iwpGroups.length === 0 && (
-                <tr><td colSpan={8} className="px-6 py-8 text-center text-text-muted">No items match the current filters.</td></tr>
+                <tr><td colSpan={11 + milestoneList.length * 2} className="px-6 py-8 text-center text-text-muted">No items match the current filters.</td></tr>
               )}
               {!isLoading && iwpGroups.map(g => (
-                <IwpRows key={g.key} group={g} isOpen={expanded.has(g.key)} onToggle={() => toggle(g.key)} />
+                <IwpRows key={g.key} group={g} isOpen={expanded.has(g.key)} onToggle={() => toggle(g.key)} milestones={milestoneList} />
               ))}
             </tbody>
           </table>
@@ -272,7 +315,12 @@ function FilterSelect({ label, value, onChange, options, allLabel = 'All' }: {
   );
 }
 
-function IwpRows({ group, isOpen, onToggle }: { group: { key: string; label: string; items: ProgressItem[] }; isOpen: boolean; onToggle: () => void }) {
+function IwpRows({ group, isOpen, onToggle, milestones }: {
+  group: { key: string; label: string; items: ProgressItem[] };
+  isOpen: boolean;
+  onToggle: () => void;
+  milestones: Milestone[];
+}) {
   const subtotal = useMemo(() => {
     let budgetHrs = 0, earnedHrs = 0, budgetQty = 0, earnedQty = 0;
     for (const i of group.items) {
@@ -291,40 +339,70 @@ function IwpRows({ group, isOpen, onToggle }: { group: { key: string; label: str
   return (
     <>
       <tr className="bg-canvas hover:bg-raised cursor-pointer" onClick={onToggle}>
-        <td className="px-3 py-2 text-sm font-semibold text-text">
+        <td className="px-3 py-2 text-sm font-semibold text-text whitespace-nowrap">
           <span className="inline-flex items-center gap-2">
             <ChevronRight size={14} className={`text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`} />
             <span className="font-mono">{group.label}</span>
             <span className="text-xs text-text-muted font-normal">({group.items.length} items · {subtotal.pctHrs.toFixed(1)}% earned)</span>
           </span>
         </td>
-        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums">{subtotal.pctHrs.toFixed(1)}%</td>
-        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums">{Math.round(subtotal.earnedHrs).toLocaleString()}</td>
-        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums">{subtotal.pctQty == null ? '—' : `${subtotal.pctQty.toFixed(1)}%`}</td>
-        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums">{subtotal.budgetQty > 0 ? Math.round(subtotal.earnedQty).toLocaleString() : '—'}</td>
-        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums">{Math.round(subtotal.budgetHrs).toLocaleString()}</td>
-        <td colSpan={2}></td>
+        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums whitespace-nowrap">{subtotal.pctHrs.toFixed(1)}%</td>
+        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums whitespace-nowrap">{Math.round(subtotal.earnedHrs).toLocaleString()}</td>
+        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums whitespace-nowrap">{subtotal.pctQty == null ? '—' : `${subtotal.pctQty.toFixed(1)}%`}</td>
+        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums whitespace-nowrap">{subtotal.budgetQty > 0 ? Math.round(subtotal.earnedQty).toLocaleString() : '—'}</td>
+        <td colSpan={5}></td>
+        <td className="px-3 py-2 text-right text-xs font-semibold text-text-muted tabular-nums whitespace-nowrap">{Math.round(subtotal.budgetHrs).toLocaleString()}</td>
+        {milestones.map(m => (<td key={`gm-${m.id}`} colSpan={2}></td>))}
       </tr>
-      {isOpen && group.items.map(i => <DwgRow key={i.id} i={i} />)}
+      {isOpen && group.items.map(i => <DwgRow key={i.id} i={i} milestones={milestones} />)}
     </>
   );
 }
 
-function DwgRow({ i }: { i: ProgressItem }) {
+function colorClass(pct: number | null | undefined): string {
+  if (pct == null) return 'text-text-subtle';
+  const n = Number(pct);
+  if (n >= 99.95) return 'text-emerald-500 font-semibold';
+  if (n > 0)      return 'text-amber-600 dark:text-amber-400 font-semibold';
+  return 'text-text-subtle';
+}
+
+function DwgRow({ i, milestones }: { i: ProgressItem; milestones: Milestone[] }) {
   const pctHrs = Number(i.percent_complete ?? 0);
   const pctQty = i.budget_qty && Number(i.budget_qty) > 0
     ? (Number(i.earned_qty ?? 0) / Number(i.budget_qty)) * 100
     : null;
+
+  const milestoneMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const row of i.progress_item_milestones ?? []) m.set(row.milestone_template_id, Number(row.percent_complete));
+    return m;
+  }, [i.progress_item_milestones]);
+
   return (
     <tr className="hover:bg-raised transition-colors">
-      <td className="px-3 py-2 text-sm font-mono text-primary pl-9">{i.dwg ?? '—'}</td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums">{pctHrs.toFixed(1)}%</td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums font-medium text-text">{Number(i.earned_hrs ?? 0).toFixed(1)}</td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums">{pctQty == null ? '—' : `${pctQty.toFixed(1)}%`}</td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums font-medium text-text">{i.budget_qty == null ? '—' : Number(i.earned_qty ?? 0).toFixed(0)}</td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums text-text-muted">{Number(i.budget_hrs ?? 0).toFixed(1)}</td>
-      <td className="px-3 py-2 text-sm text-text-muted">{i.foreman_name ?? '—'}</td>
-      <td className="px-3 py-2 text-sm text-text-muted truncate max-w-[260px]">{i.name ?? '—'}</td>
+      <td className="px-3 py-2 text-sm font-mono text-primary pl-9 whitespace-nowrap">{i.dwg ?? '—'}</td>
+      <td className={`px-3 py-2 text-right text-sm tabular-nums whitespace-nowrap ${colorClass(pctHrs)}`}>{pctHrs.toFixed(2)}%</td>
+      <td className="px-3 py-2 text-right text-sm tabular-nums font-medium text-text whitespace-nowrap">{Number(i.earned_hrs ?? 0).toFixed(2)}</td>
+      <td className={`px-3 py-2 text-right text-sm tabular-nums whitespace-nowrap ${colorClass(pctQty)}`}>{pctQty == null ? '—' : `${pctQty.toFixed(2)}%`}</td>
+      <td className="px-3 py-2 text-right text-sm tabular-nums font-medium text-text whitespace-nowrap">{i.budget_qty == null ? '—' : Number(i.earned_qty ?? 0).toFixed(2)}</td>
+      <td className="px-3 py-2 text-sm text-text-muted whitespace-nowrap">{i.attr_type ?? ''}</td>
+      <td className="px-3 py-2 text-right text-sm tabular-nums text-text-muted whitespace-nowrap">{i.budget_qty == null ? '' : Number(i.budget_qty).toLocaleString()}</td>
+      <td className="px-3 py-2 text-sm text-text-muted whitespace-nowrap">{i.unit && i.unit !== 'HRS' ? i.unit : ''}</td>
+      <td className="px-3 py-2 text-sm text-text-muted whitespace-nowrap">{i.attr_size ?? ''}</td>
+      <td className="px-3 py-2 text-sm text-text-muted whitespace-nowrap">{i.attr_spec ?? ''}</td>
+      <td className="px-3 py-2 text-right text-sm tabular-nums text-text-muted whitespace-nowrap">{Number(i.budget_hrs ?? 0).toFixed(2)}</td>
+      {milestones.map(m => {
+        const pct = milestoneMap.get(m.id);
+        return (
+          <>
+            <td key={`mn-${m.id}`} className="px-3 py-2 text-sm text-text-muted whitespace-nowrap">{m.name}</td>
+            <td key={`mp-${m.id}`} className={`px-3 py-2 text-right text-sm tabular-nums whitespace-nowrap ${colorClass(pct)}`}>
+              {pct == null ? '0.00%' : `${Number(pct).toFixed(2)}%`}
+            </td>
+          </>
+        );
+      })}
     </tr>
   );
 }
