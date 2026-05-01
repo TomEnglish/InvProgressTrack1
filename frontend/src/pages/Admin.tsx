@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { UserPlus, Shield, ShieldOff, Trash2, Link2 } from 'lucide-react';
+import { UserPlus, Shield, ShieldOff, Trash2, Link2, Mail } from 'lucide-react';
 
 interface DbUser {
   id: string;
@@ -19,6 +19,7 @@ interface UnmatchedForeman {
 export default function Admin() {
   const qc = useQueryClient();
   const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
   
   // invite form
   const [showInvite, setShowInvite] = useState(false);
@@ -51,6 +52,22 @@ export default function Admin() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin_users'] }),
+    onError: (err: Error) => setErrorMsg(err.message)
+  });
+
+  const resetPasswordMut = useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      if (error) throw error;
+      return email;
+    },
+    onSuccess: (email) => {
+      setErrorMsg('');
+      setInfoMsg(`Password reset email sent to ${email}.`);
+      setTimeout(() => setInfoMsg(''), 4000);
+    },
     onError: (err: Error) => setErrorMsg(err.message)
   });
   
@@ -102,6 +119,11 @@ export default function Admin() {
           Error: {errorMsg}
         </div>
       )}
+      {infoMsg && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-sm rounded-md font-semibold border border-emerald-200 dark:border-emerald-900/50">
+          {infoMsg}
+        </div>
+      )}
 
       <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -140,7 +162,20 @@ export default function Admin() {
                     >
                       {u.role === 'tenant_admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
                     </button>
-                    <button 
+                    <button
+                      title="Send password reset email"
+                      onClick={() => {
+                        if (confirm(`Send password reset email to ${u.email}?`)) {
+                          setErrorMsg('');
+                          resetPasswordMut.mutate(u.email);
+                        }
+                      }}
+                      disabled={resetPasswordMut.isPending}
+                      className="p-2 text-text-subtle hover:text-primary bg-canvas border border-border rounded transition-colors disabled:opacity-50"
+                    >
+                      <Mail size={16} />
+                    </button>
+                    <button
                       title="Permanently Delete Account"
                       onClick={() => {
                         if (confirm(`Are you sure you want to permanently delete ${u.email}?`)) {
