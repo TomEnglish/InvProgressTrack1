@@ -37,6 +37,14 @@ export default function Admin() {
     }
   });
 
+  const { data: meId } = useQuery({
+    queryKey: ['me_id'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user?.id ?? null;
+    }
+  });
+
   const toggleRoleMut = useMutation({
     mutationFn: async ({ id, newRole }: { id: string, newRole: string }) => {
       const { error } = await supabase.rpc('admin_set_user_role', { target_id: id, target_role: newRole });
@@ -156,9 +164,19 @@ export default function Admin() {
                   <td className="px-6 py-4 text-text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button
-                      title={u.role === 'tenant_admin' ? 'Demote to Member' : 'Promote to Tenant Admin'}
-                      onClick={() => toggleRoleMut.mutate({ id: u.id, newRole: u.role === 'tenant_admin' ? 'member' : 'tenant_admin' })}
-                      className="p-2 text-text-subtle hover:text-primary bg-canvas border border-border rounded transition-colors"
+                      title={u.id === meId
+                        ? 'You cannot change your own role'
+                        : u.role === 'tenant_admin' ? 'Demote to Member' : 'Promote to Tenant Admin'}
+                      onClick={() => {
+                        const newRole = u.role === 'tenant_admin' ? 'member' : 'tenant_admin';
+                        const action = newRole === 'tenant_admin' ? 'promote' : 'demote';
+                        if (confirm(`${action[0].toUpperCase() + action.slice(1)} ${u.email} to ${newRole === 'tenant_admin' ? 'Tenant Admin' : 'Member'}?`)) {
+                          setErrorMsg('');
+                          toggleRoleMut.mutate({ id: u.id, newRole });
+                        }
+                      }}
+                      disabled={u.id === meId}
+                      className="p-2 text-text-subtle hover:text-primary bg-canvas border border-border rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       {u.role === 'tenant_admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
                     </button>
@@ -176,13 +194,14 @@ export default function Admin() {
                       <Mail size={16} />
                     </button>
                     <button
-                      title="Permanently Delete Account"
+                      title={u.id === meId ? 'You cannot delete your own account' : 'Permanently Delete Account'}
                       onClick={() => {
                         if (confirm(`Are you sure you want to permanently delete ${u.email}?`)) {
                           deleteUserMut.mutate(u.id);
                         }
                       }}
-                      className="p-2 text-text-subtle hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 hover:border-red-500/30 bg-canvas border border-border rounded transition-colors"
+                      disabled={u.id === meId}
+                      className="p-2 text-text-subtle hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 hover:border-red-500/30 bg-canvas border border-border rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-canvas disabled:hover:text-text-subtle"
                     >
                       <Trash2 size={16} />
                     </button>
