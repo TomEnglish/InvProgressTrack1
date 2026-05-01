@@ -425,6 +425,76 @@ BEGIN
 END$$;
 
 
+-- ============================================================================
+-- 8. Refinery historical snapshots (1st-audit baseline + 2 weekly)
+-- ============================================================================
+
+DO $$
+DECLARE
+  v_proj uuid := '660e8400-e29b-41d4-a716-446655440000';
+  v_snaps record;
+  v_snap_id uuid;
+  v_total_budget numeric;
+  v_total_earned numeric;
+  v_total_actual numeric;
+  v_factor numeric;
+  v_label text;
+  v_we date;
+  v_kind text;
+  v_admin uuid := '00000000-0000-0000-0000-000000000001';
+BEGIN
+  FOR v_snaps IN
+    SELECT * FROM (VALUES
+      ('Baseline – 1st Audit', DATE '2026-04-12', 'baseline_first_audit', 0.55),
+      ('Q2 Week 1',            DATE '2026-04-19', 'weekly',               0.80),
+      ('Q2 Week 2',            DATE '2026-04-26', 'weekly',               1.00)
+    ) AS t(label, week_ending, kind, factor)
+  LOOP
+    v_label  := v_snaps.label;
+    v_we     := v_snaps.week_ending;
+    v_kind   := v_snaps.kind;
+    v_factor := v_snaps.factor;
+
+    SELECT
+      COALESCE(SUM(budget_hrs), 0),
+      COALESCE(SUM(earned_hrs * v_factor), 0),
+      COALESCE(SUM(actual_hrs * v_factor), 0)
+    INTO v_total_budget, v_total_earned, v_total_actual
+    FROM progress_items WHERE project_id = v_proj;
+
+    INSERT INTO period_snapshots (
+      project_id, snapshot_date, label,
+      total_budget, total_earned, total_actual,
+      cpi, spi,
+      kind, week_ending, source_filename, uploaded_by, uploaded_at
+    ) VALUES (
+      v_proj, v_we, v_label,
+      v_total_budget, v_total_earned, v_total_actual,
+      CASE WHEN v_total_actual = 0 THEN 0 ELSE round(v_total_earned / v_total_actual, 2) END,
+      CASE WHEN v_total_budget = 0 THEN 0 ELSE round(v_total_earned / v_total_budget, 2) END,
+      v_kind, v_we, NULL,
+      CASE WHEN EXISTS (SELECT 1 FROM app_users WHERE id = v_admin) THEN v_admin ELSE NULL END,
+      v_we::timestamptz
+    )
+    RETURNING id INTO v_snap_id;
+
+    INSERT INTO period_snapshot_items (
+      snapshot_id, progress_item_id, project_id,
+      percent_complete, earned_hrs, earned_qty, actual_hrs, actual_qty
+    )
+    SELECT
+      v_snap_id, pi.id, pi.project_id,
+      round(pi.percent_complete * v_factor, 2),
+      round(pi.earned_hrs * v_factor, 2),
+      CASE WHEN pi.earned_qty IS NULL THEN NULL ELSE round(pi.earned_qty * v_factor, 2) END,
+      round(pi.actual_hrs * v_factor, 2),
+      NULL
+    FROM progress_items pi
+    WHERE pi.project_id = v_proj;
+  END LOOP;
+END$$;
+
+
 COMMIT;
 
 -- ============================================================================
